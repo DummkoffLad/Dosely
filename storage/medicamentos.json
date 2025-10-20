@@ -1,0 +1,16 @@
+[
+  {
+    "nombre": "Losartán",
+    "sustancia": "Losartán potásico",
+    "mg": 50,
+    "requiere_receta": true,
+    "notas": ""
+  },
+  {
+    "nombre": "Ibuprofeno",
+    "sustancia": "Ibuprofeno",
+    "mg": 400,
+    "requiere_receta": false,
+    "notas": ""
+  }
+]

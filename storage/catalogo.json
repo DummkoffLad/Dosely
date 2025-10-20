@@ -1,0 +1,62 @@
+[
+  {
+    "nombre": "Paracetamol",
+    "sustancia": "Paracetamol",
+    "mg": 500,
+    "requiere_receta": false
+  },
+  {
+    "nombre": "Ibuprofeno",
+    "sustancia": "Ibuprofeno",
+    "mg": 400,
+    "requiere_receta": false
+  },
+  {
+    "nombre": "Amoxicilina",
+    "sustancia": "Amoxicilina",
+    "mg": 500,
+    "requiere_receta": true
+  },
+  {
+    "nombre": "Omeprazol",
+    "sustancia": "Omeprazol",
+    "mg": 20,
+    "requiere_receta": false
+  },
+  {
+    "nombre": "Metformina",
+    "sustancia": "Metformina",
+    "mg": 850,
+    "requiere_receta": true
+  },
+  {
+    "nombre": "Losartán",
+    "sustancia": "Losartán potásico",
+    "mg": 50,
+    "requiere_receta": true
+  },
+  {
+    "nombre": "Atorvastatina",
+    "sustancia": "Atorvastatina cálcica",
+    "mg": 20,
+    "requiere_receta": true
+  },
+  {
+    "nombre": "Cetirizina",
+    "sustancia": "Cetirizina diclorhidrato",
+    "mg": 10,
+    "requiere_receta": false
+  },
+  {
+    "nombre": "Salbutamol",
+    "sustancia": "Salbutamol",
+    "mg": 100,
+    "requiere_receta": true
+  },
+  {
+    "nombre": "Ácido acetilsalicílico",
+    "sustancia": "Aspirina",
+    "mg": 100,
+    "requiere_receta": false
+  }
+]

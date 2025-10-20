@@ -1,0 +1,305 @@
+#:import dp kivy.metrics.dp
+
+# ---------------------------------------------------------
+# Pantalla de Inicio: lista de medicamentos guardados
+# ---------------------------------------------------------
+<HomeScreen@MDScreen>:
+    name: "home"
+    MDBoxLayout:
+        orientation: "vertical"
+        MDTopAppBar:
+            title: "💊 Dosely"
+            elevation: 4
+            md_bg_color: app.theme_cls.primary_color
+            specific_text_color: 1, 1, 1, 1
+            right_action_items: [["plus", lambda x: app.open_search()], ["bell-outline", lambda x: app.test_notification()]]
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: dp(20)
+            spacing: dp(16)
+            MDLabel:
+                text: "Mis medicamentos"
+                halign: "left"
+                font_style: "H4"
+                size_hint_y: None
+                height: dp(40)
+            MDCard:
+                style: "outlined"
+                orientation: "vertical"
+                padding: dp(16)
+                radius: [dp(20), dp(20), dp(20), dp(20)]
+                md_bg_color:(0.15, 0.15, 0.15, 1)
+                elevation: 3
+                shadow_offset: (0, 2)
+                shadow_radius: dp(12)
+                shadow_softness: 8
+                MDBoxLayout:
+                    orientation: "vertical"
+                    spacing: dp(8)
+                    ScrollView:
+                        do_scroll_x: False
+                        bar_width: dp(4)
+                        bar_color: app.theme_cls.primary_color
+                        MDList:
+                            id: meds_list
+                            spacing: dp(4)
+
+# ---------------------------------------------------------
+# Pantalla de Búsqueda: filtra el catálogo base
+# ---------------------------------------------------------
+<SearchScreen@MDScreen>:
+    name: "search"
+    MDBoxLayout:
+        orientation: "vertical"
+        MDTopAppBar:
+            title: "🔍 Buscar medicamentos"
+            elevation: 4
+            md_bg_color: app.theme_cls.primary_color
+            specific_text_color: 1, 1, 1, 1
+            left_action_items: [["arrow-left", lambda x: app.back_to_home()]]
+        MDBoxLayout:
+            orientation: "vertical"
+            padding: dp(20)
+            spacing: dp(16)
+            # Search Field Card
+            MDCard:
+                orientation: "vertical"
+                padding: dp(16)
+                radius: [dp(16), dp(16), dp(16), dp(16)]
+                md_bg_color: (0.15, 0.15, 0.15, 1)
+                elevation: 7
+                size_hint_y: None
+                height: dp(75)
+                MDTextField:
+                    id: search_field
+                    mode: "round"
+                    pos_hint: {"center_x": 0.5, "center_y": 1.5}
+                    size_hint_y: .5
+                    hint_text: "Buscar por nombre o sustancia activa"
+                    helper_text: "Ej: Paracetamol, Ibuprofeno"
+                    helper_text_mode: "persistent"
+                    text_color_focus: "white"
+                    line_color_focus: "white"
+                    icon_left: "magnify"
+                    height: dp(56)
+                    on_text: app.filter_search(self.text)
+            # Results Section
+            MDBoxLayout:
+                orientation: "vertical"
+                spacing: dp(12)
+                MDLabel:
+                    text: "Resultados del catálogo"
+                    halign: "left"
+                    font_style: "H5"
+                    size_hint_y: None
+                    height: dp(36)
+                MDCard:
+                    orientation: "vertical"
+                    padding: dp(12)
+                    radius: [dp(16), dp(16), dp(16), dp(16)]
+                    md_bg_color: (0.15, 0.15, 0.15, 1)
+                    elevation: 2
+                    ScrollView:
+                        do_scroll_x: False
+                        bar_width: dp(4)
+                        bar_color: app.theme_cls.primary_color
+                        MDList:
+                            id: results_list
+                            spacing: dp(6)
+                                    # Button for custom medication
+                MDRaisedButton:
+                    text: "✨ Añadir medicamento no encontrado"
+                    pos_hint: {"center_x": 0.5}
+                    size_hint_x: 0.9
+                    size_hint_y: None
+                    height: dp(48)
+                    md_bg_color: app.theme_cls.primary_color
+                    elevation: 2
+                    on_release: app.open_add()
+
+# ---------------------------------------------------------
+# Pantalla de Añadir: registro de un medicamento
+# ---------------------------------------------------------
+<AddScreen@MDScreen>:
+    on_enter: app.reset_add_scroll()
+    name: "add"
+    MDBoxLayout:
+        orientation: "vertical"
+        MDTopAppBar:
+            title: "Añadir medicamento"
+            elevation: 4
+            md_bg_color: app.theme_cls.primary_color
+            specific_text_color: 1, 1, 1, 1
+            left_action_items: [["arrow-left", lambda x: app.back_to_search()]]
+        
+        # Body uses FloatLayout to allow an anchored bottom bar via AnchorLayout
+        FloatLayout:
+            
+            # Scrollable content fills the area; bottom padding keeps last field above the button
+            ScrollView:
+                id: add_scroll
+                size_hint: 1, 1
+                pos_hint: {"x": 0, "y": 0}
+                do_scroll_x: False
+                MDBoxLayout:
+                    orientation: "vertical"
+                    padding: [dp(14), dp(32), dp(14), add_action_bar.height + dp(20)]
+                    spacing: dp(10)
+                    adaptive_height: True
+                    size_hint_y: None
+                    height: self.minimum_height
+                    
+                    # Main Form Card (contains its own header)
+                    MDCard:
+                        orientation: "vertical"
+                        padding: [dp(16), dp(20), dp(16), dp(16)]
+                        spacing: dp(10)
+                        radius: [dp(16), dp(16), dp(16), dp(16)]
+                        md_bg_color: (0.15, 0.15, 0.15, 1)
+                        elevation: 3
+                        size_hint_y: None
+                        height: form_box.minimum_height
+                        
+                        MDBoxLayout:
+                            id: form_box
+                            orientation: "vertical"
+                            size_hint_y: None
+                            height: self.minimum_height
+                            spacing: dp(10)
+                            
+                            
+                            MDLabel:
+                                text: "Información del medicamento"
+                                halign: "left"
+                                font_style: "H6"
+                                color: "white"
+                                size_hint_y: None
+                                text_size: self.width, None
+                                height: self.texture_size[1] + dp(8)
+                            
+                            MDTextField:
+                                id: name_field
+                                mode: "round"
+                                hint_text: "Nombre comercial *"
+                                text_color_focus: "white"
+                                line_color_focus: "white"
+                                icon_color_focus: "white"
+                                helper_text: "Obligatorio"
+                                helper_text_mode: "on_error"
+                                icon_left: "pill"
+                                size_hint_y: None
+                                height: dp(64)
+                                on_focus: app.ensure_visible('add', self) if self.focus else None
+                                
+                            MDTextField:
+                                id: subs_field
+                                mode: "round"
+                                hint_text: "Sustancia activa"
+                                text_color_focus: "white"
+                                line_color_focus: "white"
+                                icon_left: "flask"
+                                size_hint_y: None
+                                height: dp(64)
+                                on_focus: app.ensure_visible('add', self) if self.focus else None
+                                MDIcon:
+
+                                
+                            MDTextField:
+                                id: mg_field
+                                mode: "round"
+                                hint_text: "Dosis (mg)"
+                                text_color_focus: "white"
+                                line_color_focus: "white"
+                                input_filter: "float"
+                                icon_left: "weight-gram"
+                                size_hint_y: None
+                                height: dp(64)
+                                on_focus: app.ensure_visible('add', self) if self.focus else None
+                            
+                            MDCard:
+                                orientation: "horizontal"
+                                padding: [dp(10), dp(6), dp(10), dp(6)]
+                                spacing: dp(8)
+                                radius: [dp(12), dp(12), dp(12), dp(12)]
+                                md_bg_color: (0.1, 0.12, 0.15, 1)
+                                elevation: 0
+                                size_hint_y: None
+                                height: dp(56)
+                                
+                                MDIcon:
+                                    icon: "file-document-outline"
+                                    size_hint_x: None
+                                    width: dp(24)
+                                    pos_hint: {"center_y": 0.5}
+                                    
+                                MDLabel:
+                                    text: "Requiere receta"
+                                    halign: "left"
+                                    valign: "center"
+                                    size_hint_x: 0.65
+                                    
+                                MDSwitch:
+                                    id: rx_switch
+                                    size_hint_x: None
+                                    width: dp(48)
+                                    pos_hint: {"center_y": 0.5}
+                            
+                            MDTextField:
+                                id: notes_field
+                                mode: "round"
+                                hint_text: "Notas (horario, indicaciones...)"
+                                multiline: True
+                                text_color_focus: "white"
+                                line_color_focus: "white"
+                                icon_left: "note-text"
+                                size_hint_y: None
+                                height: dp(120)
+                                on_focus: app.ensure_visible('add', self) if self.focus else None
+                            
+                            MDBoxLayout:
+                                orientation: "horizontal"
+                                padding: [dp(14), dp(32), dp(14), add_action_bar.height + dp(20)]
+                                spacing: dp(10)
+                                adaptive_height: True
+                                size_hint_y: None
+                                height: self.minimum_height
+                                MDTextField:
+                                    id: delay
+                                    hint_text: "Recordar cada..."
+                                    multiline: False
+                                    mode: "fill"
+                                    text_color_focus: "white"
+                                    line_color_focus: "white"
+                                    icon_left: "clock"
+                                    size_hint_x: 0.7
+                                    height: dp(64)
+                                    on_focus: app.ensure_visible('add', self) if self.focus else None
+                                MDRectangleFlatButton:
+                                    id: delay_unit
+                                    icon: "menu-down"
+                                    on_release: app.open_unit_menu(self)
+                                
+            
+            # Anchored bottom action bar
+            AnchorLayout:
+                id: add_action_bar
+                anchor_x: "center"
+                anchor_y: "bottom"
+                size_hint: 1, None
+                height: dp(64)
+                padding: [dp(14), dp(10)]
+                MDRaisedButton:
+                    text: "Guardar"
+                    size_hint: 0.96, None
+                    height: dp(48)
+                    md_bg_color: app.theme_cls.primary_color
+                    elevation: 4
+                    on_release: app.save_med()
+
+# ---------------------------------------------------------
+# Administrador de pantallas
+# ---------------------------------------------------------
+ScreenManager:
+    HomeScreen:
+    SearchScreen:
+    AddScreen:
