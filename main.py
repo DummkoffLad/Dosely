@@ -43,6 +43,11 @@ class DoselyApp(MDApp):
     Maneja la carga de la UI, la navegación, y la conexión con el backend JSON.
     """
 
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._edit_index = None
+        self._reminder_handles = {}
+
     def build(self):
         # Estilo Material 3 y tema oscuro con colores suaves.
         # En escritorio, forzar relación 9:16 para previsualizar como teléfono.
@@ -65,6 +70,19 @@ class DoselyApp(MDApp):
         self.theme_cls.accent_hue = "50"
         # Cargar archivo .kv
         return Builder.load_file("ui.kv")
+
+    @staticmethod
+    def _format_number(value):
+        if value in (None, ""):
+            return ""
+        try:
+            number = float(value)
+        except (TypeError, ValueError):
+            return str(value)
+        if abs(number - int(number)) < 1e-9:
+            return str(int(number))
+        text = f"{number:.6g}"
+        return text.rstrip("0").rstrip(".") if "." in text else text
 
     def on_start(self):
         """
@@ -91,38 +109,48 @@ class DoselyApp(MDApp):
         self.populate_search_results(catalog)
 
     def open_add(self, prefill=None):
+        self._edit_index = None
         self.root.current = "add"
-        add_screen = self.root.get_screen("add")
-        # Rellenar campos con datos si se proporcionan
-        if prefill:
-            add_screen.ids.name_field.text = prefill.get("nombre", "")
-            add_screen.ids.subs_field.text = prefill.get("sustancia", "")
-            mg_val = prefill.get("mg", "")
-            add_screen.ids.mg_field.text = str(mg_val) if mg_val is not None else ""
-            add_screen.ids.rx_switch.active = bool(prefill.get("requiere_receta", False))
-            add_screen.ids.notes_field.text = prefill.get("notas", "")
-        else:
-            # Limpiar campos
-            add_screen.ids.name_field.text = ""
-            add_screen.ids.subs_field.text = ""
-            add_screen.ids.mg_field.text = ""
-            add_screen.ids.rx_switch.active = False
-            add_screen.ids.notes_field.text = ""
+        self._populate_form("add", prefill or {})
+
+    def open_edit(self, index, *_args):
+        meds = backend.load_meds()
+        if not (0 <= index < len(meds)):
+            toast("No se encontró el medicamento seleccionado")
+            return
+        self._edit_index = index
+        self._populate_form("edit", meds[index])
+        self.root.current = "edit"
         
-    def reset_add_scroll(self, *_args):
-        """Ensure Add screen opens at the top position and no field has focus."""
+    def _populate_form(self, screen_name, data):
+        screen = self.root.get_screen(screen_name)
+        ids = screen.ids
+        entry = data or {}
+
+        ids.name_field.text = entry.get("nombre", "")
+        ids.subs_field.text = entry.get("sustancia", "")
+        ids.mg_field.text = self._format_number(entry.get("mg"))
+        ids.rx_switch.active = bool(entry.get("requiere_receta", False))
+        ids.notes_field.text = entry.get("notas", "")
+
+        reminder = entry.get("recordatorio") or {}
+        ids.delay_field.text = self._format_number(reminder.get("intervalo"))
+        unit_label = reminder.get("unidad", "horas") or "horas"
+        ids.unit_item.text = unit_label
+
+    def reset_form_scroll(self, screen_name):
+        """Ensure form screens open at the top position with no focus."""
         def _apply(_dt):
             try:
-                add_screen = self.root.get_screen("add")
-                scroll = add_screen.ids.get("add_scroll")
+                screen = self.root.get_screen(screen_name)
+                scroll = screen.ids.get("form_scroll")
                 if scroll:
                     scroll.scroll_y = 1
-                for wid in ("name_field", "subs_field", "mg_field", "notes_field"):
-                    if wid in add_screen.ids:
-                        add_screen.ids[wid].focus = False
+                for wid in ("delay_field", "name_field", "subs_field", "mg_field", "notes_field"):
+                    if wid in screen.ids:
+                        screen.ids[wid].focus = False
             except Exception:
                 pass
-        # Schedule to run after the layout has its final size
         Clock.schedule_once(_apply, 0)
         Clock.schedule_once(_apply, 0.05)
 
@@ -154,18 +182,26 @@ class DoselyApp(MDApp):
             list_widget.add_widget(item)
             return
 
-        for med in meds:
+        for idx, med in enumerate(meds):
             nombre = med.get("nombre", "Desconocido")
             sust = med.get("sustancia", "")
             mg = med.get("mg")
-            mg_txt = f"{mg} mg" if mg not in (None, "",) else ""
+            mg_txt_val = self._format_number(mg)
+            mg_txt = f"{mg_txt_val} mg" if mg_txt_val else ""
             receta = " • Requiere receta" if med.get("requiere_receta") else ""
+            reminder = med.get("recordatorio") or {}
+            reminder_txt = ""
+            if reminder.get("intervalo"):
+                interval_txt = self._format_number(reminder.get("intervalo"))
+                unit_txt = reminder.get("unidad", "horas")
+                reminder_txt = f" • Cada {interval_txt} {unit_txt}"
             primary = f"{nombre} {mg_txt}".strip()
-            secondary = f"{sust}{receta}".strip()
+            secondary = f"{sust}{receta}{reminder_txt}".strip()
 
             item = TwoLineListItem(
                 text=primary if primary else nombre,
                 secondary_text=secondary if secondary else "",
+                on_release=partial(self.open_edit, idx),
             )
             list_widget.add_widget(item)
 
@@ -205,7 +241,8 @@ class DoselyApp(MDApp):
             nombre = r.get("nombre", "")
             sust = r.get("sustancia", "")
             mg = r.get("mg")
-            mg_txt = f"{mg} mg" if mg not in (None, "",) else ""
+            mg_txt_val = self._format_number(mg)
+            mg_txt = f"{mg_txt_val} mg" if mg_txt_val else ""
             primary = f"{nombre} {mg_txt}".strip()
             secondary = sust
 
@@ -233,32 +270,91 @@ class DoselyApp(MDApp):
     # ------------------------
     # Guardado
     # ------------------------
-    def save_med(self):
-        """
-        Lee campos de AddScreen, valida y guarda en medicamentos.json
-        """
-        add_screen = self.root.get_screen("add")
-        nombre = (add_screen.ids.name_field.text or "").strip()
-        sust = (add_screen.ids.subs_field.text or "").strip()
-        mg_text = (add_screen.ids.mg_field.text or "").strip().replace(",", ".")
-        rx = bool(add_screen.ids.rx_switch.active)
-        notas = (add_screen.ids.notes_field.text or "").strip()
+    def save_med(self, screen_name="add"):
+        """Valida y guarda un medicamento desde la pantalla indicada."""
+        entry = self._collect_entry_from_form(screen_name)
+        if entry is None:
+            return
 
-        # Validación básica
+        try:
+            if screen_name == "edit":
+                if self._edit_index is None:
+                    toast("No hay un medicamento seleccionado para editar")
+                    return
+                backend.update_med(self._edit_index, entry)
+                index = self._edit_index
+                toast_msg = "Medicamento actualizado"
+            else:
+                index = backend.add_med(entry)
+                toast_msg = "Medicamento guardado"
+
+            reminder = entry.get("recordatorio") or {}
+            delay_txt = self._format_number(reminder.get("intervalo"))
+            summary_unit = reminder.get("unidad", "horas")
+
+            try:
+                self._schedule_reminder_for_entry(index, entry)
+            except Exception as reminder_error:
+                toast(f"Guardado, pero el recordatorio falló: {reminder_error}")
+            else:
+                toast(f"{toast_msg}. Recordatorio cada {delay_txt} {summary_unit}")
+
+            self._edit_index = None
+            self.back_to_home()
+            self.refresh_home()
+        except Exception as e:
+            toast(f"Error al guardar: {e}")
+
+    def _collect_entry_from_form(self, screen_name):
+        screen = self.root.get_screen(screen_name)
+        ids = screen.ids
+
+        nombre = (ids.name_field.text or "").strip()
+        sust = (ids.subs_field.text or "").strip()
+        mg_text = (ids.mg_field.text or "").strip().replace(",", ".")
+        rx = bool(ids.rx_switch.active)
+        notas = (ids.notes_field.text or "").strip()
+        delay_text = (ids.delay_field.text or "").strip().replace(",", ".")
+        unit_label = (ids.unit_item.text or "horas").strip().lower()
+
+        if not delay_text:
+            toast("Indique cada cuántas horas se repetirá el recordatorio")
+            return None
+        try:
+            delay_value = float(delay_text)
+        except ValueError:
+            toast("Ingrese un valor numérico válido para el recordatorio")
+            return None
+        if delay_value <= 0:
+            toast("El recordatorio debe ser mayor que 0")
+            return None
+
         if not nombre:
             toast("El nombre es obligatorio")
-            return
+            return None
 
         mg = None
         if mg_text:
             try:
-                # Permitir enteros o decimales
-                mg = float(mg_text)
-                # Redondeo amigable si es entero
-                mg = int(mg) if abs(mg - int(mg)) < 1e-9 else mg
+                mg_value = float(mg_text)
             except ValueError:
                 toast("Ingrese un valor numérico válido para mg")
-                return
+                return None
+            mg = int(mg_value) if abs(mg_value - int(mg_value)) < 1e-9 else mg_value
+
+        unit_label = "dias" if unit_label.startswith("dia") else "horas"
+        unit_en = "days" if unit_label == "dias" else "hours"
+        delay_clean = int(delay_value) if abs(delay_value - int(delay_value)) < 1e-9 else delay_value
+
+        message = f"Recordatorio de {nombre}" if nombre else "Recordatorio de medicación"
+        reminder = {
+            "intervalo": delay_clean,
+            "unidad": unit_label,
+            "unidad_en": unit_en,
+            "intervalo_horas": delay_clean if unit_en == "hours" else delay_clean * 24,
+            "mensaje": message,
+            "repetir": True,
+        }
 
         entry = {
             "nombre": nombre,
@@ -266,15 +362,30 @@ class DoselyApp(MDApp):
             "mg": mg,
             "requiere_receta": rx,
             "notas": notas,
+            "recordatorio": reminder,
         }
+        return entry
 
-        try:
-            backend.add_med(entry)
-            toast("Medicamento guardado")
-            self.back_to_home()
-            self.refresh_home()
-        except Exception as e:
-            toast(f"Error al guardar: {e}")
+    def _schedule_reminder_for_entry(self, index, entry):
+        reminder = entry.get("recordatorio") or {}
+        intervalo = reminder.get("intervalo")
+        unidad_en = reminder.get("unidad_en")
+        mensaje = reminder.get("mensaje") or "Recordatorio de medicación"
+        repetir = reminder.get("repetir", False)
+
+        if not intervalo or not unidad_en:
+            return None
+
+        previous = self._reminder_handles.pop(index, None)
+        if previous and hasattr(previous, "cancel"):
+            try:
+                previous.cancel()
+            except Exception:
+                pass
+
+        handler = notify.schedule_notification(intervalo, unidad_en, "Dosely", mensaje, repeat=repetir)
+        self._reminder_handles[index] = handler
+        return handler
 
     def ensure_visible(self, screen_name, widget, padding=140):
         """Scroll the screen's ScrollView so `widget` is visible when the soft keyboard shows.
@@ -286,7 +397,7 @@ class DoselyApp(MDApp):
             if is_desktop and getattr(Window, "keyboard_height", 0) == 0:
                 return
             screen = self.root.get_screen(screen_name)
-            scroll = screen.ids.get("add_scroll") or screen.ids.get("scroll")
+            scroll = screen.ids.get("form_scroll") or screen.ids.get("add_scroll") or screen.ids.get("scroll")
             if scroll and widget:
                 Clock.schedule_once(lambda *_: scroll.scroll_to(widget, padding=dp(padding), animate=True), 0)
         except Exception:
@@ -332,7 +443,7 @@ class DoselyApp(MDApp):
             pass
 
     def schedule_from_add(self):
-        """Schedule a notification based on Add screen delay and unit."""
+        """Programa un recordatorio recurrente desde la pantalla de alta."""
         try:
             add_screen = self.root.get_screen("add")
             delay_txt = (add_screen.ids.delay_field.text or "").strip().replace(",", ".")
@@ -349,13 +460,15 @@ class DoselyApp(MDApp):
                 return
 
             unit_label = (add_screen.ids.unit_item.text or "horas").strip().lower()
-            unit_en = "hours" if unit_label.startswith("hora") else "days"
+            unit_label = "dias" if unit_label.startswith("dia") else "horas"
+            unit_en = "days" if unit_label == "dias" else "hours"
 
             nombre = (add_screen.ids.name_field.text or "").strip()
             message = f"Recordatorio de {nombre}" if nombre else "Recordatorio de medicación"
 
-            notify.schedule_notification(delay, unit_en, "Dosely", message)
-            toast(f"Recordatorio programado en {delay} {unit_label}")
+            delay_clean = int(delay) if abs(delay - int(delay)) < 1e-9 else delay
+            notify.schedule_notification(delay_clean, unit_en, "Dosely", message, repeat=True)
+            toast(f"Recordatorio programado cada {delay_clean} {unit_label}")
         except Exception as e:
             toast(f"No se pudo programar: {e}")
 
@@ -368,7 +481,7 @@ class DoselyApp(MDApp):
         """
         try:
             notify.send_notification("Dosely", "Este es un recordatorio de prueba")
-            notify.schedule_notification(0.002,"hours", "Dosely", "Recordatorio programado (0.002h)")
+            notify.schedule_notification(0.002, "hours", "Dosely", "Recordatorio programado (0.002h)")
             toast("Notificaciones enviadas")
         except Exception as e:
             toast(f"No se pudo enviar notificación: {e}")

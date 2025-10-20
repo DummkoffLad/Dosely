@@ -74,14 +74,23 @@ def load_meds():
 
 
 def add_med(entry: dict):
-    """
-    Añade un medicamento al archivo del usuario.
-    entry: dict con claves: nombre, sustancia, mg, requiere_receta, notas
-    """
+    """Añade un medicamento y devuelve su índice dentro de la lista."""
     meds = load_meds()
     meds.append(entry)
     with open(MEDS_FILE, "w", encoding="utf-8") as f:
         json.dump(meds, f, ensure_ascii=False, indent=2)
+    return len(meds) - 1
+
+
+def update_med(index: int, entry: dict):
+    """Actualiza un medicamento existente por índice."""
+    meds = load_meds()
+    if 0 <= index < len(meds):
+        meds[index] = entry
+        with open(MEDS_FILE, "w", encoding="utf-8") as f:
+            json.dump(meds, f, ensure_ascii=False, indent=2)
+        return True
+    raise IndexError("Índice de medicamento fuera de rango")
 
 
 def load_catalog():

@@ -12,5 +12,16 @@
     "mg": 400,
     "requiere_receta": false,
     "notas": ""
+  },
+  {
+    "nombre": "Paracetamol",
+    "sustancia": "Paracetamol",
+    "mg": 500,
+    "requiere_receta": false,
+    "notas": "",
+    "recordatorio": {
+      "intervalo": 0.001,
+      "repetir": true
+    }
   }
 ]

@@ -121,7 +121,7 @@
 # Pantalla de Añadir: registro de un medicamento
 # ---------------------------------------------------------
 <AddScreen@MDScreen>:
-    on_enter: app.reset_add_scroll()
+    on_enter: app.reset_form_scroll('add')
     name: "add"
     MDBoxLayout:
         orientation: "vertical"
@@ -131,13 +131,10 @@
             md_bg_color: app.theme_cls.primary_color
             specific_text_color: 1, 1, 1, 1
             left_action_items: [["arrow-left", lambda x: app.back_to_search()]]
-        
-        # Body uses FloatLayout to allow an anchored bottom bar via AnchorLayout
+
         FloatLayout:
-            
-            # Scrollable content fills the area; bottom padding keeps last field above the button
             ScrollView:
-                id: add_scroll
+                id: form_scroll
                 size_hint: 1, 1
                 pos_hint: {"x": 0, "y": 0}
                 do_scroll_x: False
@@ -148,8 +145,7 @@
                     adaptive_height: True
                     size_hint_y: None
                     height: self.minimum_height
-                    
-                    # Main Form Card (contains its own header)
+
                     MDCard:
                         orientation: "vertical"
                         padding: [dp(16), dp(20), dp(16), dp(16)]
@@ -159,15 +155,14 @@
                         elevation: 3
                         size_hint_y: None
                         height: form_box.minimum_height
-                        
+
                         MDBoxLayout:
                             id: form_box
                             orientation: "vertical"
                             size_hint_y: None
                             height: self.minimum_height
                             spacing: dp(10)
-                            
-                            
+
                             MDLabel:
                                 text: "Información del medicamento"
                                 halign: "left"
@@ -176,7 +171,9 @@
                                 size_hint_y: None
                                 text_size: self.width, None
                                 height: self.texture_size[1] + dp(8)
-                            
+
+
+
                             MDTextField:
                                 id: name_field
                                 mode: "round"
@@ -190,7 +187,7 @@
                                 size_hint_y: None
                                 height: dp(64)
                                 on_focus: app.ensure_visible('add', self) if self.focus else None
-                                
+
                             MDTextField:
                                 id: subs_field
                                 mode: "round"
@@ -201,9 +198,7 @@
                                 size_hint_y: None
                                 height: dp(64)
                                 on_focus: app.ensure_visible('add', self) if self.focus else None
-                                MDIcon:
 
-                                
                             MDTextField:
                                 id: mg_field
                                 mode: "round"
@@ -215,7 +210,33 @@
                                 size_hint_y: None
                                 height: dp(64)
                                 on_focus: app.ensure_visible('add', self) if self.focus else None
-                            
+                            MDBoxLayout:
+                                orientation: "horizontal"
+                                spacing: dp(10)
+                                size_hint_y: None
+                                height: self.minimum_height
+                                MDTextField:
+                                    id: delay_field
+                                    mode: "round"
+                                    hint_text: "Recordar cada... *"
+                                    helper_text: "Obligatorio"
+                                    helper_text_mode: "on_error"
+                                    text_color_focus: "white"
+                                    line_color_focus: "white"
+                                    icon_left: "clock"
+                                    input_filter: "float"
+                                    size_hint_x: 0.7
+                                    height: dp(64)
+                                    on_focus: app.ensure_visible('add', self) if self.focus else None
+                                MDRoundFlatButton:
+                                    id: unit_item
+                                    text: "horas"
+                                    icon: "menu-down"
+                                    text_color: "white"
+                                    line_color: "white"
+                                    size_hint_x: 0.3
+                                    on_release: app.open_unit_menu(self)
+
                             MDCard:
                                 orientation: "horizontal"
                                 padding: [dp(10), dp(6), dp(10), dp(6)]
@@ -225,25 +246,25 @@
                                 elevation: 0
                                 size_hint_y: None
                                 height: dp(56)
-                                
+
                                 MDIcon:
                                     icon: "file-document-outline"
                                     size_hint_x: None
                                     width: dp(24)
                                     pos_hint: {"center_y": 0.5}
-                                    
+
                                 MDLabel:
                                     text: "Requiere receta"
                                     halign: "left"
                                     valign: "center"
                                     size_hint_x: 0.65
-                                    
+
                                 MDSwitch:
                                     id: rx_switch
                                     size_hint_x: None
                                     width: dp(48)
                                     pos_hint: {"center_y": 0.5}
-                            
+
                             MDTextField:
                                 id: notes_field
                                 mode: "round"
@@ -255,32 +276,7 @@
                                 size_hint_y: None
                                 height: dp(120)
                                 on_focus: app.ensure_visible('add', self) if self.focus else None
-                            
-                            MDBoxLayout:
-                                orientation: "horizontal"
-                                padding: [dp(14), dp(32), dp(14), add_action_bar.height + dp(20)]
-                                spacing: dp(10)
-                                adaptive_height: True
-                                size_hint_y: None
-                                height: self.minimum_height
-                                MDTextField:
-                                    id: delay
-                                    hint_text: "Recordar cada..."
-                                    multiline: False
-                                    mode: "fill"
-                                    text_color_focus: "white"
-                                    line_color_focus: "white"
-                                    icon_left: "clock"
-                                    size_hint_x: 0.7
-                                    height: dp(64)
-                                    on_focus: app.ensure_visible('add', self) if self.focus else None
-                                MDRectangleFlatButton:
-                                    id: delay_unit
-                                    icon: "menu-down"
-                                    on_release: app.open_unit_menu(self)
-                                
-            
-            # Anchored bottom action bar
+
             AnchorLayout:
                 id: add_action_bar
                 anchor_x: "center"
@@ -297,9 +293,184 @@
                     on_release: app.save_med()
 
 # ---------------------------------------------------------
+# Pantalla de Edición: actualización de un medicamento
+# ---------------------------------------------------------
+<EditScreen@MDScreen>:
+    on_enter: app.reset_form_scroll('edit')
+    name: "edit"
+    MDBoxLayout:
+        orientation: "vertical"
+        MDTopAppBar:
+            title: "Editar medicamento"
+            elevation: 4
+            md_bg_color: app.theme_cls.primary_color
+            specific_text_color: 1, 1, 1, 1
+            left_action_items: [["arrow-left", lambda x: app.back_to_home()]]
+
+        FloatLayout:
+            ScrollView:
+                id: form_scroll
+                size_hint: 1, 1
+                pos_hint: {"x": 0, "y": 0}
+                do_scroll_x: False
+                MDBoxLayout:
+                    orientation: "vertical"
+                    padding: [dp(14), dp(32), dp(14), edit_action_bar.height + dp(20)]
+                    spacing: dp(10)
+                    adaptive_height: True
+                    size_hint_y: None
+                    height: self.minimum_height
+
+                    MDCard:
+                        orientation: "vertical"
+                        padding: [dp(16), dp(20), dp(16), dp(16)]
+                        spacing: dp(10)
+                        radius: [dp(16), dp(16), dp(16), dp(16)]
+                        md_bg_color: (0.15, 0.15, 0.15, 1)
+                        elevation: 3
+                        size_hint_y: None
+                        height: form_box.minimum_height
+
+                        MDBoxLayout:
+                            id: form_box
+                            orientation: "vertical"
+                            size_hint_y: None
+                            height: self.minimum_height
+                            spacing: dp(10)
+
+                            MDLabel:
+                                text: "Editar información"
+                                halign: "left"
+                                font_style: "H6"
+                                color: "white"
+                                size_hint_y: None
+                                text_size: self.width, None
+                                height: self.texture_size[1] + dp(8)
+
+                            MDBoxLayout:
+                                orientation: "horizontal"
+                                spacing: dp(10)
+                                size_hint_y: None
+                                height: dp(64)
+                                MDTextField:
+                                    id: delay_field
+                                    mode: "round"
+                                    hint_text: "Recordar cada... *"
+                                    helper_text: "Obligatorio"
+                                    helper_text_mode: "on_error"
+                                    text_color_focus: "white"
+                                    line_color_focus: "white"
+                                    icon_left: "clock"
+                                    input_filter: "float"
+                                    size_hint_x: 0.7
+                                    height: dp(64)
+                                    on_focus: app.ensure_visible('edit', self) if self.focus else None
+                                MDRoundFlatButton:
+                                    id: unit_item
+                                    text: "horas"
+                                    icon: "menu-down"
+                                    text_color: "white"
+                                    line_color: "white"
+                                    size_hint_x: 0.3
+                                    on_release: app.open_unit_menu(self)
+
+                            MDTextField:
+                                id: name_field
+                                mode: "round"
+                                hint_text: "Nombre comercial *"
+                                text_color_focus: "white"
+                                line_color_focus: "white"
+                                icon_color_focus: "white"
+                                helper_text: "Obligatorio"
+                                helper_text_mode: "on_error"
+                                icon_left: "pill"
+                                size_hint_y: None
+                                height: dp(64)
+                                on_focus: app.ensure_visible('edit', self) if self.focus else None
+
+                            MDTextField:
+                                id: subs_field
+                                mode: "round"
+                                hint_text: "Sustancia activa"
+                                text_color_focus: "white"
+                                line_color_focus: "white"
+                                icon_left: "flask"
+                                size_hint_y: None
+                                height: dp(64)
+                                on_focus: app.ensure_visible('edit', self) if self.focus else None
+
+                            MDTextField:
+                                id: mg_field
+                                mode: "round"
+                                hint_text: "Dosis (mg)"
+                                text_color_focus: "white"
+                                line_color_focus: "white"
+                                input_filter: "float"
+                                icon_left: "weight-gram"
+                                size_hint_y: None
+                                height: dp(64)
+                                on_focus: app.ensure_visible('edit', self) if self.focus else None
+
+                            MDCard:
+                                orientation: "horizontal"
+                                padding: [dp(10), dp(6), dp(10), dp(6)]
+                                spacing: dp(8)
+                                radius: [dp(12), dp(12), dp(12), dp(12)]
+                                md_bg_color: (0.1, 0.12, 0.15, 1)
+                                elevation: 0
+                                size_hint_y: None
+                                height: dp(56)
+
+                                MDIcon:
+                                    icon: "file-document-outline"
+                                    size_hint_x: None
+                                    width: dp(24)
+                                    pos_hint: {"center_y": 0.5}
+
+                                MDLabel:
+                                    text: "Requiere receta"
+                                    halign: "left"
+                                    valign: "center"
+                                    size_hint_x: 0.65
+
+                                MDSwitch:
+                                    id: rx_switch
+                                    size_hint_x: None
+                                    width: dp(48)
+                                    pos_hint: {"center_y": 0.5}
+
+                            MDTextField:
+                                id: notes_field
+                                mode: "round"
+                                hint_text: "Notas (horario, indicaciones...)"
+                                multiline: True
+                                text_color_focus: "white"
+                                line_color_focus: "white"
+                                icon_left: "note-text"
+                                size_hint_y: None
+                                height: dp(120)
+                                on_focus: app.ensure_visible('edit', self) if self.focus else None
+
+            AnchorLayout:
+                id: edit_action_bar
+                anchor_x: "center"
+                anchor_y: "bottom"
+                size_hint: 1, None
+                height: dp(64)
+                padding: [dp(14), dp(10)]
+                MDRaisedButton:
+                    text: "Guardar cambios"
+                    size_hint: 0.96, None
+                    height: dp(48)
+                    md_bg_color: app.theme_cls.primary_color
+                    elevation: 4
+                    on_release: app.save_med('edit')
+
+# ---------------------------------------------------------
 # Administrador de pantallas
 # ---------------------------------------------------------
 ScreenManager:
     HomeScreen:
     SearchScreen:
     AddScreen:
+    EditScreen:
