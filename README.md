@@ -1,3 +1,6 @@
+EN DESARROLLO
+correr en vscode: instalar python 3.11 y crear un entorno virtual, instalar librerias kivy, kivyMD, plyer
+
 💊 Dosely
 
 Recordatorios simples para cuidar tu salud.
